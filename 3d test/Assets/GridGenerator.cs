@@ -1,35 +1,67 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class GridGenerator : MonoBehaviour
 {
-    public GameObject tilePrefab; // Prefab for the grid tiles
+    public GameObject tilePrefab;
+    public GameObject obstructionPrefab; // Prefab for the visual obstruction
+    public int gridWidth = 25;
+    public int gridHeight = 25;
+    public float tileSize = 4;
+    public float obstructionProbability = 0.2f; // 20% chance for an obstruction
 
-    public int gridWidth = 25;  // Number of tiles in the X direction
-    public int gridHeight = 25; // Number of tiles in the Z direction
-    public float tileSize = 4;  // Size of each tile
+    private Dictionary<Vector2Int, Node> nodes = new Dictionary<Vector2Int, Node>();
+    private Dictionary<Vector2Int, GameObject> tiles = new Dictionary<Vector2Int, GameObject>();
 
     void Start()
     {
-        GenerateGrid(); // Call the function to generate the grid when the game starts
+        GenerateGrid();
+        GenerateRandomObstructions();
     }
 
     void GenerateGrid()
     {
-        // Calculate offsets to center the grid at (0,0)
         float offsetX = (gridWidth - 1) * tileSize / 2f;
         float offsetZ = (gridHeight - 1) * tileSize / 2f;
 
-        // Loop through each grid position and instantiate a tile
         for (int x = 0; x < gridWidth; x++)
         {
             for (int z = 0; z < gridHeight; z++)
             {
-                // Calculate the position of the tile
                 Vector3 spawnPos = new Vector3(x * tileSize - offsetX, 0, z * tileSize - offsetZ);
+                GameObject tile = Instantiate(tilePrefab, spawnPos, Quaternion.identity, transform);
 
-                // Instantiate the tilePrefab at the calculated position
-                Instantiate(tilePrefab, spawnPos, Quaternion.identity, transform);
+                Vector2Int gridPos = new Vector2Int(x, z);
+                nodes[gridPos] = new Node(gridPos);
+                tiles[gridPos] = tile;
             }
+        }
+    }
+
+    void GenerateRandomObstructions()
+    {
+        foreach (var node in nodes.Values)
+        {
+            if (Random.value < obstructionProbability)
+            {
+                // Set node as obstructed
+                ToggleObstruction(node.position, true);
+                // Instantiate a visual obstruction at this tile's location
+                Vector3 obstructionPos = tiles[node.position].transform.position;
+                Instantiate(obstructionPrefab, obstructionPos, Quaternion.identity, transform);
+            }
+        }
+    }
+
+    public void ToggleObstruction(Vector2Int pos, bool isObstructed)
+    {
+        if (nodes.ContainsKey(pos))
+        {
+            nodes[pos].isWalkable = !isObstructed;
+
+            // Optional: Change the tile's color to indicate the state change.
+            Renderer renderer = tiles[pos].GetComponent<Renderer>();
+            renderer.material.color = isObstructed ? Color.red : Color.white;
         }
     }
 }
