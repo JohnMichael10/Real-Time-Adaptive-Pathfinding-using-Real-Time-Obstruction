@@ -11,8 +11,15 @@ public class AStarPathfinding : MonoBehaviour
         List<Node> openList = new List<Node>();
         HashSet<Vector2Int> closedList = new HashSet<Vector2Int>();
 
-        Node startNode = new Node(start);
-        Node goalNode = new Node(goal);
+        // Retrieve nodes from grid instead of creating new ones
+        Node startNode = grid.GetNode(start);
+        Node goalNode = grid.GetNode(goal);
+
+        if (startNode == null || goalNode == null)
+        {
+            Debug.LogError("Start or goal node is null.");
+            return new List<Vector2Int>();
+        }
 
         openList.Add(startNode);
 
@@ -31,18 +38,23 @@ public class AStarPathfinding : MonoBehaviour
 
             foreach (Vector2Int neighborPos in GetNeighbors(currentNode.position))
             {
+                // Check if neighbor exists in the grid and is walkable
+                Node neighborNode = grid.GetNode(neighborPos);
+                if (neighborNode == null || !neighborNode.isWalkable) continue;
+
                 if (closedList.Contains(neighborPos)) continue;
 
-                Node neighborNode = new Node(neighborPos)
+                float newCost = currentNode.gCost + 1;
+                if (newCost < neighborNode.gCost || !openList.Exists(n => n.position == neighborPos))
                 {
-                    gCost = currentNode.gCost + 1,
-                    hCost = Vector2Int.Distance(neighborPos, goal),
-                    parent = currentNode
-                };
+                    neighborNode.gCost = newCost;
+                    neighborNode.hCost = Vector2Int.Distance(neighborPos, goal);
+                    neighborNode.parent = currentNode;
 
-                if (!openList.Exists(n => n.position == neighborPos && n.FCost <= neighborNode.FCost))
-                {
-                    openList.Add(neighborNode);
+                    if (!openList.Exists(n => n.position == neighborPos))
+                    {
+                        openList.Add(neighborNode);
+                    }
                 }
             }
         }
@@ -53,8 +65,10 @@ public class AStarPathfinding : MonoBehaviour
     {
         List<Vector2Int> neighbors = new List<Vector2Int>
         {
-            nodePos + Vector2Int.up, nodePos + Vector2Int.down,
-            nodePos + Vector2Int.left, nodePos + Vector2Int.right
+            nodePos + Vector2Int.up,
+            nodePos + Vector2Int.down,
+            nodePos + Vector2Int.left,
+            nodePos + Vector2Int.right
         };
         return neighbors;
     }

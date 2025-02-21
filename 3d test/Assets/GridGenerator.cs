@@ -64,4 +64,18 @@ public class GridGenerator : MonoBehaviour
             renderer.material.color = isObstructed ? Color.red : Color.white;
         }
     }
+
+    public Node GetNode(Vector2Int pos)
+    {
+        if (nodes.ContainsKey(pos))
+            return nodes[pos];
+        return null;
+    }
+    
+    public bool IsWalkable(Vector2Int pos)
+    {
+        if (nodes.ContainsKey(pos))
+            return nodes[pos].isWalkable;
+        return false; // or true if you consider off-grid as walkable
+    }
 }
