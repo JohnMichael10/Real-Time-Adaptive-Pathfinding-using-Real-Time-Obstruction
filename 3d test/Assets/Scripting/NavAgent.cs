@@ -10,14 +10,16 @@ public class NavAgent : MonoBehaviour
     public Transform destination;
     public float moveSpeed = 5f;
     public float rotationSpeed = 5f;
-    [Tooltip("Minimum distance before advancing to next waypoint")]
     public float waypointAdvanceDistance = 0.25f;
 
     [Header("Height Settings")]
-    [Tooltip("Base height above ground plane")]
     public float baseHeight = 0.5f;
-    [Tooltip("Additional height offset to prevent clipping")]
     public float heightOffset = 0.25f;
+
+    [Header("Movement Control")]
+    public KeyCode movementKey = KeyCode.Space;
+    public bool requireKeyPress = true;
+    public bool startWithMovementEnabled = false;
 
     private List<Vector2Int> path;
     private int pathIndex;
@@ -27,13 +29,21 @@ public class NavAgent : MonoBehaviour
     private bool isMoving = false;
     private Vector3 movementVelocity;
     private float rotationVelocity;
+    private bool isSnappingToGrid = false;
+    private bool hasReachedDestination = false;
+    private Vector2Int currentGridPosition;
+    
+    [SerializeField] 
+    private bool movementEnabled;
+    public bool IsMovementEnabled => movementEnabled;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
         grid = FindObjectOfType<GridGenerator>();
-        InitializePosition();
+        movementEnabled = startWithMovementEnabled;
+        StartCoroutine(SnapToGridSmoothly(transform, true));
     }
 
     void Start()
@@ -44,11 +54,70 @@ public class NavAgent : MonoBehaviour
 
     void Update()
     {
-        if (isMoving)
+        if (Input.GetKeyDown(movementKey))
+        {
+            movementEnabled = !movementEnabled;
+            Debug.Log($"Movement {(movementEnabled ? "enabled" : "disabled")}");
+        }
+
+        if (grid != null)
+        {
+            currentGridPosition = grid.WorldToGridPosition(transform.position);
+            
+            if (!grid.IsWalkable(currentGridPosition))
+            {
+                grid.ToggleObstruction(currentGridPosition, false);
+                Debug.LogWarning("Cleared obstruction at agent position");
+            }
+        }
+
+        if ((movementEnabled || !requireKeyPress) && isMoving && !isSnappingToGrid)
         {
             UpdateMovement();
             UpdateRotation();
+            CheckDestinationReached();
         }
+    }
+
+    void CheckDestinationReached()
+    {
+        if (path == null || path.Count == 0 || pathIndex >= path.Count)
+        {
+            float distanceToDestination = Vector3.Distance(transform.position, destination.position);
+            if (distanceToDestination <= waypointAdvanceDistance && !hasReachedDestination)
+            {
+                hasReachedDestination = true;
+                Debug.Log("Pathfinding Complete!");
+                isMoving = false;
+            }
+        }
+    }
+
+    IEnumerator SnapToGridSmoothly(Transform targetTransform, bool isAgent)
+    {
+        isSnappingToGrid = true;
+        
+        if (grid == null) yield break;
+        
+        Vector2Int gridPos = grid.WorldToGridPosition(targetTransform.position);
+        Vector3 targetPosition = grid.GridToWorldPosition(gridPos);
+        targetPosition.y = isAgent ? GetTargetHeight() : 0f;
+
+        float snapDuration = 0.5f;
+        float elapsedTime = 0f;
+        Vector3 startPosition = targetTransform.position;
+
+        while (elapsedTime < snapDuration)
+        {
+            targetTransform.position = Vector3.Lerp(startPosition, targetPosition, elapsedTime / snapDuration);
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+
+        targetTransform.position = targetPosition;
+        isSnappingToGrid = false;
+        
+        if (isAgent) InitializePosition();
     }
 
     void InitializePosition()
@@ -70,16 +139,14 @@ public class NavAgent : MonoBehaviour
         currentTarget = grid.GridToWorldPosition(path[pathIndex]);
         currentTarget.y = GetTargetHeight();
 
-        // Smooth damp movement for vibration-free motion
         transform.position = Vector3.SmoothDamp(
             transform.position,
             currentTarget,
             ref movementVelocity,
-            0.2f, // Smoothing time
+            0.2f,
             moveSpeed
         );
 
-        // Check if we should advance to next waypoint
         if (Vector3.Distance(transform.position, currentTarget) <= waypointAdvanceDistance)
         {
             pathIndex++;
@@ -89,7 +156,7 @@ public class NavAgent : MonoBehaviour
     void UpdateRotation()
     {
         Vector3 direction = currentTarget - transform.position;
-        direction.y = 0; // Ignore vertical component
+        direction.y = 0;
 
         if (direction.magnitude > 0.01f)
         {
@@ -98,7 +165,7 @@ public class NavAgent : MonoBehaviour
                 transform.eulerAngles.y,
                 targetAngle,
                 ref rotationVelocity,
-                0.2f, // Rotation smoothing time
+                0.2f,
                 rotationSpeed
             );
             transform.rotation = Quaternion.Euler(0, angle, 0);
@@ -109,13 +176,15 @@ public class NavAgent : MonoBehaviour
     {
         while (true)
         {
-            yield return new WaitForSeconds(0.5f); // Reduced update frequency
+            yield return new WaitForSeconds(0.5f);
             
-            if (!ValidateComponents())
+            if (!ValidateComponents() || isSnappingToGrid)
             {
                 isMoving = false;
                 continue;
             }
+
+            hasReachedDestination = false;
 
             Vector2Int startPos = grid.WorldToGridPosition(transform.position);
             Vector2Int targetPos = grid.WorldToGridPosition(destination.position);
@@ -135,9 +204,14 @@ public class NavAgent : MonoBehaviour
                 pathIndex = 0;
                 isMoving = true;
             }
+            else if (Vector2Int.Distance(startPos, targetPos) <= 1)
+            {
+                Debug.Log("Pathfinding Complete! (Already at destination)");
+                isMoving = false;
+            }
             else
             {
-                Debug.LogWarning("Pathfinding failed!");
+                Debug.LogWarning("Pathfinding failed - no valid path found!");
                 isMoving = false;
             }
         }

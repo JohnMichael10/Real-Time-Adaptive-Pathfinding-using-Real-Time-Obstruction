@@ -8,20 +8,36 @@ public class AStarPathfinding : MonoBehaviour
 
     public List<Vector2Int> FindPath(Vector2Int start, Vector2Int goal)
     {
-        List<Node> openList = new List<Node>();
-        HashSet<Vector2Int> closedList = new HashSet<Vector2Int>();
-
-        // Retrieve nodes from grid instead of creating new ones
-        Node startNode = grid.GetNode(start);
-        Node goalNode = grid.GetNode(goal);
-
-        if (startNode == null || goalNode == null)
+        // Early validation checks
+        if (grid == null)
         {
-            Debug.LogError("Start or goal node is null.");
+            Debug.LogError("Grid reference is not set!");
             return new List<Vector2Int>();
         }
 
+        Node goalNode = grid.GetNode(goal);
+        if (goalNode == null || !goalNode.isWalkable)
+        {
+            Debug.LogWarning($"Target position {goal} is obstructed or invalid!");
+            return new List<Vector2Int>();
+        }
+
+        Node startNode = grid.GetNode(start);
+        if (startNode == null)
+        {
+            Debug.LogError($"Start position {start} is invalid!");
+            return new List<Vector2Int>();
+        }
+
+        List<Node> openList = new List<Node>();
+        HashSet<Vector2Int> closedList = new HashSet<Vector2Int>();
+
+        // Reset pathfinding data
+        grid.ResetAllPathfindingData();
+
         openList.Add(startNode);
+        startNode.gCost = 0;
+        startNode.hCost = Vector2Int.Distance(start, goal);
 
         while (openList.Count > 0)
         {
@@ -38,27 +54,27 @@ public class AStarPathfinding : MonoBehaviour
 
             foreach (Vector2Int neighborPos in GetNeighbors(currentNode.position))
             {
-                // Check if neighbor exists in the grid and is walkable
                 Node neighborNode = grid.GetNode(neighborPos);
-                if (neighborNode == null || !neighborNode.isWalkable) continue;
+                if (neighborNode == null || !neighborNode.isWalkable || closedList.Contains(neighborPos))
+                    continue;
 
-                if (closedList.Contains(neighborPos)) continue;
-
-                float newCost = currentNode.gCost + 1;
-                if (newCost < neighborNode.gCost || !openList.Exists(n => n.position == neighborPos))
+                float newCost = currentNode.gCost + Vector2Int.Distance(currentNode.position, neighborPos);
+                if (newCost < neighborNode.gCost || !openList.Contains(neighborNode))
                 {
                     neighborNode.gCost = newCost;
                     neighborNode.hCost = Vector2Int.Distance(neighborPos, goal);
                     neighborNode.parent = currentNode;
 
-                    if (!openList.Exists(n => n.position == neighborPos))
+                    if (!openList.Contains(neighborNode))
                     {
                         openList.Add(neighborNode);
                     }
                 }
             }
         }
-        return new List<Vector2Int>(); // No path found
+
+        Debug.LogWarning("Pathfinding failed - no valid path found!");
+        return new List<Vector2Int>();
     }
 
     List<Vector2Int> GetNeighbors(Vector2Int nodePos)
