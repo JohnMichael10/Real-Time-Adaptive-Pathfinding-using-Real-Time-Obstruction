@@ -16,6 +16,10 @@ public class NavAgent : MonoBehaviour
     public float baseHeight = 0.5f;
     public float heightOffset = 0.25f;
 
+    [Header("Destination Settings")]
+    public float destinationSnapDistance = 0.1f;
+    public float destinationStopDistance = 0.5f;
+
     [Header("Movement Control")]
     public KeyCode movementKey = KeyCode.Space;
     public bool requireKeyPress = true;
@@ -71,7 +75,7 @@ public class NavAgent : MonoBehaviour
             }
         }
 
-        if ((movementEnabled || !requireKeyPress) && isMoving && !isSnappingToGrid)
+        if ((movementEnabled || !requireKeyPress) && isMoving && !isSnappingToGrid && !hasReachedDestination)
         {
             UpdateMovement();
             UpdateRotation();
@@ -81,16 +85,30 @@ public class NavAgent : MonoBehaviour
 
     void CheckDestinationReached()
     {
-        if (path == null || path.Count == 0 || pathIndex >= path.Count)
+        if (destination == null) return;
+
+        float distanceToDestination = Vector3.Distance(transform.position, destination.position);
+        if (distanceToDestination <= destinationStopDistance)
         {
-            float distanceToDestination = Vector3.Distance(transform.position, destination.position);
-            if (distanceToDestination <= waypointAdvanceDistance && !hasReachedDestination)
-            {
-                hasReachedDestination = true;
-                Debug.Log("Pathfinding Complete!");
-                isMoving = false;
-            }
+            SnapToDestination();
         }
+    }
+
+    void SnapToDestination()
+    {
+        hasReachedDestination = true;
+        isMoving = false;
+        
+        Vector2Int destGridPos = grid.WorldToGridPosition(destination.position);
+        Vector3 snappedPosition = grid.GridToWorldPosition(destGridPos);
+        snappedPosition.y = GetTargetHeight();
+        transform.position = snappedPosition;
+        
+        rb.velocity = Vector3.zero;
+        path = null;
+        pathIndex = 0;
+        
+        Debug.Log("Destination reached - position locked");
     }
 
     IEnumerator SnapToGridSmoothly(Transform targetTransform, bool isAgent)
@@ -184,7 +202,14 @@ public class NavAgent : MonoBehaviour
                 continue;
             }
 
-            hasReachedDestination = false;
+            // Reset reached flag if destination moves away
+            if (hasReachedDestination && 
+                Vector3.Distance(transform.position, destination.position) > destinationStopDistance)
+            {
+                hasReachedDestination = false;
+            }
+
+            if (hasReachedDestination) continue;
 
             Vector2Int startPos = grid.WorldToGridPosition(transform.position);
             Vector2Int targetPos = grid.WorldToGridPosition(destination.position);
@@ -206,8 +231,7 @@ public class NavAgent : MonoBehaviour
             }
             else if (Vector2Int.Distance(startPos, targetPos) <= 1)
             {
-                Debug.Log("Pathfinding Complete! (Already at destination)");
-                isMoving = false;
+                SnapToDestination();
             }
             else
             {
@@ -242,6 +266,12 @@ public class NavAgent : MonoBehaviour
         {
             Gizmos.color = Color.green;
             Gizmos.DrawWireSphere(currentTarget, 0.3f);
+        }
+
+        if (destination != null)
+        {
+            Gizmos.color = Color.magenta;
+            Gizmos.DrawWireSphere(destination.position, destinationStopDistance);
         }
     }
 }

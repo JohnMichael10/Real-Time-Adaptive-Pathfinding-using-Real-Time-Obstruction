@@ -177,7 +177,7 @@ MonoBehaviour:
   walkableColor: {r: 1, g: 1, b: 1, a: 1}
   obstructedColor: {r: 1, g: 0, b: 0, a: 1}
   navAgent: {fileID: 0}
-  destination: {fileID: 0}
+  destination: {fileID: 570862968}
   manualProtectedPositions: []
   showGridInEditor: 1
   editorGridColor: {r: 0.5, g: 0.5, b: 0.5, a: 0.25}
@@ -412,9 +412,7 @@ MonoBehaviour:
   movementKey: 32
   requireKeyPress: 1
   startWithMovementEnabled: 0
-  guiFontSize: 20
-  guiTextColor: {r: 1, g: 1, b: 1, a: 1}
-  guiPosition: {x: 10, y: 50}
+  movementEnabled: 0
 --- !u!54 &524747204
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -524,7 +522,7 @@ Transform:
   m_GameObject: {fileID: 524747202}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.05, z: 0}
+  m_LocalPosition: {x: 0, y: 1, z: -44}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -543,7 +541,7 @@ GameObject:
   - component: {fileID: 570862970}
   m_Layer: 0
   m_Name: Destination
-  m_TagString: Untagged
+  m_TagString: Destination
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -813,11 +811,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   gridGenerator: {fileID: 141549361}
-  placeObstructions: 1
-  toggleModeKey: 32
   placementEffect: {fileID: 0}
-  placementSound: {fileID: 0}
-  errorSound: {fileID: 0}
   placeCursor: {fileID: 0}
   removeCursor: {fileID: 0}
 --- !u!1 &1127256693

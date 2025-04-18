@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -32,6 +33,10 @@ public class GridGenerator : MonoBehaviour
     public Color protectedTileColor = Color.blue;
     public Color destinationColor = Color.magenta;
 
+    [Header("Dynamic Obstruction Settings")]
+    public float dynamicObstructionInterval = 2f;
+    public Color dynamicModeActiveColor = Color.yellow;
+
     [Header("Debug")]
     public bool showAgentProtectionDebug = false;
 
@@ -42,8 +47,11 @@ public class GridGenerator : MonoBehaviour
     private HashSet<Vector2Int> protectedPositions = new HashSet<Vector2Int>();
     private Vector2Int lastAgentGridPos;
     private Vector2Int lastDestinationGridPos;
+    private Coroutine dynamicObstructionRoutine;
+    private bool isInDynamicMode = false;
 
     public Dictionary<Vector2Int, Node> Nodes => nodes;
+    public bool IsInDynamicMode => isInDynamicMode;
 
     void OnEnable()
     {
@@ -77,6 +85,78 @@ public class GridGenerator : MonoBehaviour
         {
             UpdateAgentProtection();
             UpdateDestinationProtection();
+
+            if (Input.GetKeyDown(KeyCode.G)) ToggleDynamicMode(true);
+            if (Input.GetKeyDown(KeyCode.H)) ToggleDynamicMode(false);
+        }
+    }
+
+    public void ToggleDynamicMode(bool enable)
+    {
+        if (enable == isInDynamicMode) return;
+        
+        isInDynamicMode = enable;
+        
+        if (enable)
+        {
+            dynamicObstructionRoutine = StartCoroutine(DynamicObstructionRoutine());
+            Debug.Log("Dynamic obstructions ENABLED");
+        }
+        else if (dynamicObstructionRoutine != null)
+        {
+            StopCoroutine(dynamicObstructionRoutine);
+            Debug.Log("Dynamic obstructions DISABLED");
+        }
+        
+        UpdateAllTileColorsForDynamicMode(enable);
+    }
+
+    private IEnumerator DynamicObstructionRoutine()
+    {
+        while (isInDynamicMode)
+        {
+            yield return new WaitForSeconds(dynamicObstructionInterval);
+            
+            // Clear existing non-protected obstructions
+            foreach (var pos in new List<Vector2Int>(obstructions.Keys))
+            {
+                if (!IsPositionProtected(pos)) ToggleObstruction(pos, false);
+            }
+            
+            // Generate new obstructions
+            for (int x = 0; x < gridWidth; x++)
+            {
+                for (int y = 0; y < gridHeight; y++)
+                {
+                    Vector2Int pos = new Vector2Int(x, y);
+                    if (!IsPositionProtected(pos) && Random.value < obstructionProbability)
+                    {
+                        ToggleObstruction(pos, true);
+                    }
+                }
+            }
+        }
+    }
+
+    private void UpdateAllTileColorsForDynamicMode(bool dynamicModeActive)
+    {
+        foreach (var tilePair in tiles)
+        {
+            Vector2Int pos = tilePair.Key;
+            GameObject tile = tilePair.Value;
+            Renderer renderer = tile.GetComponent<Renderer>();
+            
+            if (renderer != null)
+            {
+                if (dynamicModeActive && !protectedPositions.Contains(pos) && !IsDestination(pos))
+                {
+                    renderer.material.color = dynamicModeActiveColor;
+                }
+                else
+                {
+                    UpdateTileVisual(pos, !GetNode(pos).isWalkable);
+                }
+            }
         }
     }
 
@@ -84,69 +164,52 @@ public class GridGenerator : MonoBehaviour
     {
         if (destination == null)
         {
-            GameObject[] destObjects = GameObject.FindGameObjectsWithTag("Destination");
+            var destObjects = GameObject.FindGameObjectsWithTag("Destination");
             if (destObjects.Length > 0)
             {
                 destination = destObjects[0];
-                if (destObjects.Length > 1)
-                {
-                    Debug.LogWarning($"Multiple Destination objects found, using: {destination.name}");
-                }
-                Debug.Log($"Auto-assigned destination: {destination.name}");
+                if (destObjects.Length > 1) Debug.LogWarning($"Multiple Destinations found, using {destination.name}");
             }
-            else
-            {
-                Debug.LogError("No GameObject with 'Destination' tag found!");
-            }
+            else Debug.LogError("No GameObject with 'Destination' tag found!");
         }
     }
 
     void UpdateDestinationProtection()
     {
-        if (destination == null)
-        {
-            FindDestination();
-            if (destination == null) return;
-        }
+        if (destination == null) return;
 
-        Vector2Int currentDestPos = WorldToGridPosition(destination.transform.position);
-        Node destNode = GetNode(currentDestPos);
-        
-        if (destNode == null) return;
+        Vector2Int currentPos = WorldToGridPosition(destination.transform.position);
+        Node node = GetNode(currentPos);
+        if (node == null) return;
 
-        if (currentDestPos != lastDestinationGridPos)
+        if (currentPos != lastDestinationGridPos)
         {
             if (protectedPositions.Contains(lastDestinationGridPos))
             {
                 protectedPositions.Remove(lastDestinationGridPos);
                 UpdateTileVisual(lastDestinationGridPos, false);
             }
-            lastDestinationGridPos = currentDestPos;
+            lastDestinationGridPos = currentPos;
         }
 
-        if (obstructions.TryGetValue(currentDestPos, out GameObject obs))
+        if (obstructions.ContainsKey(currentPos))
         {
-            Destroy(obs);
-            obstructions.Remove(currentDestPos);
+            Destroy(obstructions[currentPos]);
+            obstructions.Remove(currentPos);
         }
 
-        destNode.isWalkable = true;
-
-        if (!protectedPositions.Contains(currentDestPos))
-        {
-            protectedPositions.Add(currentDestPos);
-        }
-
-        UpdateTileVisual(currentDestPos, false);
+        node.isWalkable = true;
+        if (!protectedPositions.Contains(currentPos)) protectedPositions.Add(currentPos);
+        UpdateTileVisual(currentPos, false);
     }
 
     void UpdateAgentProtection()
     {
         if (navAgent == null) return;
 
-        Vector2Int currentAgentPos = WorldToGridPosition(navAgent.transform.position);
+        Vector2Int currentPos = WorldToGridPosition(navAgent.transform.position);
         
-        if (currentAgentPos != lastAgentGridPos)
+        if (currentPos != lastAgentGridPos)
         {
             if (protectedPositions.Contains(lastAgentGridPos))
             {
@@ -154,18 +217,17 @@ public class GridGenerator : MonoBehaviour
                 UpdateTileVisual(lastAgentGridPos, false);
             }
 
-            if (!protectedPositions.Contains(currentAgentPos))
+            if (!protectedPositions.Contains(currentPos))
             {
-                protectedPositions.Add(currentAgentPos);
-                Node agentNode = GetNode(currentAgentPos);
-                if (agentNode != null)
+                protectedPositions.Add(currentPos);
+                Node node = GetNode(currentPos);
+                if (node != null)
                 {
-                    agentNode.isWalkable = true;
-                    UpdateTileVisual(currentAgentPos, false);
+                    node.isWalkable = true;
+                    UpdateTileVisual(currentPos, false);
                 }
             }
-
-            lastAgentGridPos = currentAgentPos;
+            lastAgentGridPos = currentPos;
         }
     }
 
@@ -195,18 +257,15 @@ public class GridGenerator : MonoBehaviour
             protectedPositions.Add(agentPos);
             lastAgentGridPos = agentPos;
             
-            Node agentNode = GetNode(agentPos);
-            if (agentNode != null)
+            Node node = GetNode(agentPos);
+            if (node != null)
             {
-                agentNode.isWalkable = true;
+                node.isWalkable = true;
                 UpdateTileVisual(agentPos, false);
             }
         }
 
-        if (destination != null)
-        {
-            UpdateDestinationProtection();
-        }
+        if (destination != null) UpdateDestinationProtection();
     }
 
     void GenerateGrid()
@@ -226,10 +285,7 @@ public class GridGenerator : MonoBehaviour
                 GameObject tile = Instantiate(tilePrefab, spawnPos, Quaternion.identity, transform);
                 tile.name = $"Tile_{x}_{z}";
 
-                if (tile.GetComponent<Collider>() == null)
-                {
-                    tile.AddComponent<BoxCollider>();
-                }
+                if (tile.GetComponent<Collider>() == null) tile.AddComponent<BoxCollider>();
 
                 Vector2Int gridPos = new Vector2Int(x, z);
                 nodes[gridPos] = new Node(gridPos);
@@ -240,10 +296,7 @@ public class GridGenerator : MonoBehaviour
 
     public void GenerateRandomObstructions()
     {
-        foreach (var obs in obstructions.Values)
-        {
-            if (obs != null) Destroy(obs);
-        }
+        foreach (var obs in obstructions.Values) if (obs != null) Destroy(obs);
         obstructions.Clear();
 
         ProtectCriticalPositions();
@@ -257,10 +310,7 @@ public class GridGenerator : MonoBehaviour
                 continue;
             }
 
-            if (Random.value < obstructionProbability)
-            {
-                ToggleObstruction(node.position, true);
-            }
+            if (Random.value < obstructionProbability) ToggleObstruction(node.position, true);
         }
     }
 
@@ -268,10 +318,7 @@ public class GridGenerator : MonoBehaviour
     {
         if (IsPositionProtected(pos))
         {
-            if (isObstructed)
-            {
-                Debug.LogWarning($"Blocked obstruction at protected position: {pos}");
-            }
+            if (isObstructed) Debug.LogWarning($"Blocked obstruction at protected position: {pos}");
             return;
         }
 
@@ -297,25 +344,15 @@ public class GridGenerator : MonoBehaviour
 
     void UpdateTileVisual(Vector2Int pos, bool isObstructed)
     {
-        if (tiles.TryGetValue(pos, out GameObject tile))
-        {
-            Renderer renderer = tile.GetComponent<Renderer>();
-            if (renderer != null)
-            {
-                if (IsDestination(pos))
-                {
-                    renderer.material.color = destinationColor;
-                }
-                else if (protectedPositions.Contains(pos))
-                {
-                    renderer.material.color = protectedTileColor;
-                }
-                else
-                {
-                    renderer.material.color = isObstructed ? obstructedColor : walkableColor;
-                }
-            }
-        }
+        if (!tiles.TryGetValue(pos, out GameObject tile)) return;
+
+        Renderer renderer = tile.GetComponent<Renderer>();
+        if (renderer == null) return;
+
+        if (IsDestination(pos)) renderer.material.color = destinationColor;
+        else if (protectedPositions.Contains(pos)) renderer.material.color = protectedTileColor;
+        else if (isInDynamicMode && !isObstructed) renderer.material.color = dynamicModeActiveColor;
+        else renderer.material.color = isObstructed ? obstructedColor : walkableColor;
     }
 
     public Vector2Int WorldToGridPosition(Vector3 worldPos)
@@ -340,20 +377,12 @@ public class GridGenerator : MonoBehaviour
     }
 
     public Node GetNode(Vector2Int pos) => nodes.TryGetValue(pos, out Node node) ? node : null;
-    
     public bool IsWalkable(Vector2Int pos) => nodes.TryGetValue(pos, out Node node) && node.isWalkable;
-
-    public bool IsPositionProtected(Vector2Int pos)
-    {
-        return protectedPositions.Contains(pos) || IsDestination(pos);
-    }
+    public bool IsPositionProtected(Vector2Int pos) => protectedPositions.Contains(pos) || IsDestination(pos);
 
     public void ResetAllPathfindingData()
     {
-        foreach (Node node in nodes.Values)
-        {
-            node.ResetPathfindingData();
-        }
+        foreach (Node node in nodes.Values) node.ResetPathfindingData();
     }
 
     public void AddProtectedPosition(Vector2Int pos)
@@ -366,10 +395,7 @@ public class GridGenerator : MonoBehaviour
         }
     }
 
-    public void RemoveProtectedPosition(Vector2Int pos)
-    {
-        protectedPositions.Remove(pos);
-    }
+    public void RemoveProtectedPosition(Vector2Int pos) => protectedPositions.Remove(pos);
 
     public void GenerateEditorPreview()
     {
@@ -384,7 +410,6 @@ public class GridGenerator : MonoBehaviour
             {
                 Vector3 spawnPos = new Vector3(x * tileSize - offsetX, 0, z * tileSize - offsetZ);
                 GameObject tile = Instantiate(tilePrefab, spawnPos, Quaternion.identity, transform);
-                
                 tile.name = $"PreviewTile_{x}_{z}";
                 tile.hideFlags = HideFlags.DontSave;
                 tile.tag = "EditorOnly";
@@ -395,7 +420,6 @@ public class GridGenerator : MonoBehaviour
                     renderer.sharedMaterial = new Material(renderer.sharedMaterial);
                     renderer.sharedMaterial.color = editorGridColor;
                 }
-
                 previewTiles.Add(tile);
             }
         }
@@ -403,13 +427,7 @@ public class GridGenerator : MonoBehaviour
 
     public void ClearPreview()
     {
-        foreach (var tile in previewTiles)
-        {
-            if (tile != null)
-            {
-                DestroyImmediate(tile);
-            }
-        }
+        foreach (var tile in previewTiles) if (tile != null) DestroyImmediate(tile);
         previewTiles.Clear();
     }
 
@@ -421,17 +439,11 @@ public class GridGenerator : MonoBehaviour
         float offsetZ = (gridHeight - 1) * tileSize / 2f;
 
         Gizmos.color = editorGridColor;
-        
         for (int x = 0; x < gridWidth; x++)
         {
             for (int z = 0; z < gridHeight; z++)
             {
-                Vector3 center = new Vector3(
-                    x * tileSize - offsetX, 
-                    0, 
-                    z * tileSize - offsetZ
-                );
-                
+                Vector3 center = new Vector3(x * tileSize - offsetX, 0, z * tileSize - offsetZ);
                 Gizmos.DrawWireCube(center, new Vector3(tileSize, 0.1f, tileSize));
             }
         }
@@ -447,45 +459,34 @@ public class GridGenerator : MonoBehaviour
             }
         }
     }
-}
 
 #if UNITY_EDITOR
-[CustomEditor(typeof(GridGenerator))]
-public class GridGeneratorEditor : Editor
-{
-    public override void OnInspectorGUI()
+    [CustomEditor(typeof(GridGenerator))]
+    public class GridGeneratorEditor : Editor
     {
-        DrawDefaultInspector();
-        
-        GridGenerator generator = (GridGenerator)target;
-        
-        if (GUILayout.Button("Find Destination"))
+        public override void OnInspectorGUI()
         {
-            generator.FindDestination();
-            EditorUtility.SetDirty(generator);
-        }
-        
-        if (GUILayout.Button("Generate Preview"))
-        {
-            generator.GenerateEditorPreview();
-        }
-        
-        if (GUILayout.Button("Clear Preview"))
-        {
-            generator.ClearPreview();
-        }
-
-        if (GUILayout.Button("Regenerate Obstructions"))
-        {
-            if (Application.isPlaying)
+            DrawDefaultInspector();
+            GridGenerator generator = (GridGenerator)target;
+            
+            if (GUILayout.Button("Find Destination")) generator.FindDestination();
+            if (GUILayout.Button("Generate Preview")) generator.GenerateEditorPreview();
+            if (GUILayout.Button("Clear Preview")) generator.ClearPreview();
+            
+            if (GUILayout.Button("Regenerate Obstructions"))
             {
-                generator.GenerateRandomObstructions();
+                if (Application.isPlaying) generator.GenerateRandomObstructions();
+                else Debug.LogWarning("Can only regenerate obstructions in Play Mode");
             }
-            else
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Dynamic Obstructions", EditorStyles.boldLabel);
+            if (GUILayout.Button("Toggle Dynamic Obstructions"))
             {
-                Debug.LogWarning("Can only regenerate obstructions in Play Mode");
+                if (Application.isPlaying) generator.ToggleDynamicMode(!generator.IsInDynamicMode);
+                else Debug.LogWarning("Can only toggle dynamic obstructions in Play Mode");
             }
         }
     }
-}
 #endif
+}
