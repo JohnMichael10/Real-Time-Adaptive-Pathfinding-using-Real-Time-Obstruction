@@ -6,7 +6,7 @@ using System.Collections.Generic;
 public class NavAgent : MonoBehaviour
 {
     [Header("Pathfinding")]
-    public AStarPathfinding pathfinder;
+    public MonoBehaviour pathfinder; // Can be AStarPathfinding, DLitePathfinding, or HybridPathfinding
     public Transform destination;
     public float moveSpeed = 5f;
     public float rotationSpeed = 5f;
@@ -25,6 +25,11 @@ public class NavAgent : MonoBehaviour
     public bool requireKeyPress = true;
     public bool startWithMovementEnabled = false;
 
+    [Header("Debug")]
+    public bool showPathGizmos = true;
+    public Color pathColor = Color.cyan;
+    public Color currentTargetColor = Color.green;
+
     private List<Vector2Int> path;
     private int pathIndex;
     private Rigidbody rb;
@@ -36,7 +41,7 @@ public class NavAgent : MonoBehaviour
     private bool isSnappingToGrid = false;
     private bool hasReachedDestination = false;
     private Vector2Int currentGridPosition;
-    
+
     [SerializeField] 
     private bool movementEnabled;
     public bool IsMovementEnabled => movementEnabled;
@@ -61,7 +66,6 @@ public class NavAgent : MonoBehaviour
         if (Input.GetKeyDown(movementKey))
         {
             movementEnabled = !movementEnabled;
-            Debug.Log($"Movement {(movementEnabled ? "enabled" : "disabled")}");
         }
 
         if (grid != null)
@@ -71,7 +75,6 @@ public class NavAgent : MonoBehaviour
             if (!grid.IsWalkable(currentGridPosition))
             {
                 grid.ToggleObstruction(currentGridPosition, false);
-                Debug.LogWarning("Cleared obstruction at agent position");
             }
         }
 
@@ -107,8 +110,6 @@ public class NavAgent : MonoBehaviour
         rb.velocity = Vector3.zero;
         path = null;
         pathIndex = 0;
-        
-        Debug.Log("Destination reached - position locked");
     }
 
     IEnumerator SnapToGridSmoothly(Transform targetTransform, bool isAgent)
@@ -167,6 +168,7 @@ public class NavAgent : MonoBehaviour
 
         if (Vector3.Distance(transform.position, currentTarget) <= waypointAdvanceDistance)
         {
+            transform.position = currentTarget;
             pathIndex++;
         }
     }
@@ -202,7 +204,6 @@ public class NavAgent : MonoBehaviour
                 continue;
             }
 
-            // Reset reached flag if destination moves away
             if (hasReachedDestination && 
                 Vector3.Distance(transform.position, destination.position) > destinationStopDistance)
             {
@@ -216,12 +217,11 @@ public class NavAgent : MonoBehaviour
 
             if (!grid.IsWalkable(targetPos))
             {
-                Debug.LogWarning("Target position is obstructed!");
                 isMoving = false;
                 continue;
             }
 
-            List<Vector2Int> newPath = pathfinder.FindPath(startPos, targetPos);
+            List<Vector2Int> newPath = GetPath(startPos, targetPos);
             
             if (newPath != null && newPath.Count > 0)
             {
@@ -235,25 +235,69 @@ public class NavAgent : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning("Pathfinding failed - no valid path found!");
                 isMoving = false;
             }
         }
     }
 
+    private List<Vector2Int> GetPath(Vector2Int start, Vector2Int target)
+    {
+        if (pathfinder is AStarPathfinding aStar)
+        {
+            return aStar.FindPath(start, target);
+        }
+        else if (pathfinder is DLitePathfinding dLite)
+        {
+            return dLite.FindPath(start, target);
+        }
+        else if (pathfinder is HybridPathfinding hybrid)
+        {
+            return hybrid.FindPath(start, target);
+        }
+        
+        Debug.LogError("No valid pathfinder component found!");
+        return new List<Vector2Int>();
+    }
+
     bool ValidateComponents()
     {
-        if (destination == null) return false;
-        if (grid == null) grid = FindObjectOfType<GridGenerator>();
-        if (pathfinder == null) pathfinder = FindObjectOfType<AStarPathfinding>();
-        return grid != null && pathfinder != null;
+        if (destination == null) 
+        {
+            Debug.LogWarning("Destination is not set!");
+            return false;
+        }
+
+        if (grid == null) 
+        {
+            grid = FindObjectOfType<GridGenerator>();
+            if (grid == null)
+            {
+                Debug.LogError("No GridGenerator found in scene!");
+                return false;
+            }
+        }
+
+        if (pathfinder == null) 
+        {
+            pathfinder = FindObjectOfType<HybridPathfinding>() ?? 
+                        (MonoBehaviour)FindObjectOfType<AStarPathfinding>() ?? 
+                        (MonoBehaviour)FindObjectOfType<DLitePathfinding>();
+            
+            if (pathfinder == null)
+            {
+                Debug.LogError("No pathfinder component (A*, DLite, or Hybrid) found in scene!");
+                return false;
+            }
+        }
+
+        return true;
     }
 
     void OnDrawGizmosSelected()
     {
-        if (path == null || grid == null) return;
+        if (!showPathGizmos || path == null || grid == null) return;
 
-        Gizmos.color = Color.cyan;
+        Gizmos.color = pathColor;
         for (int i = 0; i < path.Count - 1; i++)
         {
             Vector3 start = grid.GridToWorldPosition(path[i]);
@@ -264,7 +308,7 @@ public class NavAgent : MonoBehaviour
 
         if (isMoving && pathIndex < path.Count)
         {
-            Gizmos.color = Color.green;
+            Gizmos.color = currentTargetColor;
             Gizmos.DrawWireSphere(currentTarget, 0.3f);
         }
 

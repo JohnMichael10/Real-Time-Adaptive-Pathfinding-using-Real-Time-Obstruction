@@ -133,7 +133,8 @@ GameObject:
   m_Component:
   - component: {fileID: 141549362}
   - component: {fileID: 141549361}
-  - component: {fileID: 141549360}
+  - component: {fileID: 141549364}
+  - component: {fileID: 141549363}
   m_Layer: 0
   m_Name: GridManager
   m_TagString: Untagged
@@ -141,21 +142,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &141549360
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 141549359}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 66209dcb0fab0e643aa20ab6ec46fbb5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  grid: {fileID: 141549361}
-  startPoint: {fileID: 0}
-  endPoint: {fileID: 570862969}
 --- !u!114 &141549361
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -184,6 +170,8 @@ MonoBehaviour:
   showProtectedTiles: 1
   protectedTileColor: {r: 0, g: 0, b: 1, a: 1}
   destinationColor: {r: 1, g: 0, b: 1, a: 1}
+  dynamicObstructionInterval: 2
+  dynamicModeActiveColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   showAgentProtectionDebug: 0
 --- !u!4 &141549362
 Transform:
@@ -200,6 +188,36 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &141549363
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 141549359}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3a91569bf7b28094fa18d37441e63fcd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hybridPathfinder: {fileID: 0}
+--- !u!114 &141549364
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 141549359}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d870327750ae00e4aadcf0c56ac1cf64, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  grid: {fileID: 0}
+  currentMode: 1
+  changeThreshold: 5
+  changeCheckInterval: 0.5
+  logObstructionChanges: 1
 --- !u!1001 &246730866
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -402,16 +420,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5c4c0a3e7c3af6d47b4f2bb2c04f7537, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  pathfinder: {fileID: 141549360}
+  pathfinder: {fileID: 0}
   destination: {fileID: 570862969}
   moveSpeed: 10
   rotationSpeed: 5
   waypointAdvanceDistance: 0.25
   baseHeight: 0.5
   heightOffset: 0.25
+  destinationSnapDistance: 0.1
+  destinationStopDistance: 0.5
   movementKey: 32
   requireKeyPress: 1
   startWithMovementEnabled: 0
+  showPathGizmos: 1
+  pathColor: {r: 0, g: 1, b: 1, a: 1}
+  currentTargetColor: {r: 0, g: 1, b: 0, a: 1}
   movementEnabled: 0
 --- !u!54 &524747204
 Rigidbody:
@@ -539,6 +562,7 @@ GameObject:
   - component: {fileID: 570862969}
   - component: {fileID: 570862971}
   - component: {fileID: 570862970}
+  - component: {fileID: 570862972}
   m_Layer: 0
   m_Name: Destination
   m_TagString: Destination
@@ -611,6 +635,19 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &570862972
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 570862968}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9154f5df31b654d46b40d80851dbdf18, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  snapDuration: 0.5
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
