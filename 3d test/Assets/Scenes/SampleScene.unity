@@ -133,7 +133,6 @@ GameObject:
   m_Component:
   - component: {fileID: 141549362}
   - component: {fileID: 141549361}
-  - component: {fileID: 141549364}
   - component: {fileID: 141549363}
   m_Layer: 0
   m_Name: GridManager
@@ -162,6 +161,7 @@ MonoBehaviour:
   obstructionProbability: 0.2
   walkableColor: {r: 1, g: 1, b: 1, a: 1}
   obstructedColor: {r: 1, g: 0, b: 0, a: 1}
+  dynamicModeColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   navAgent: {fileID: 0}
   destination: {fileID: 570862968}
   manualProtectedPositions: []
@@ -171,8 +171,8 @@ MonoBehaviour:
   protectedTileColor: {r: 0, g: 0, b: 1, a: 1}
   destinationColor: {r: 1, g: 0, b: 1, a: 1}
   dynamicObstructionInterval: 2
-  dynamicModeActiveColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  showAgentProtectionDebug: 0
+  isInDynamicMode: 0
+  toggleDynamicModeKey: 103
 --- !u!4 &141549362
 Transform:
   m_ObjectHideFlags: 0
@@ -197,27 +197,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 141549359}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3a91569bf7b28094fa18d37441e63fcd, type: 3}
+  m_Script: {fileID: 11500000, guid: 11f5996af72e0ee498f1893de5b92863, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  hybridPathfinder: {fileID: 0}
---- !u!114 &141549364
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 141549359}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d870327750ae00e4aadcf0c56ac1cf64, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  grid: {fileID: 0}
-  currentMode: 1
-  changeThreshold: 5
-  changeCheckInterval: 0.5
-  logObstructionChanges: 1
+  grid: {fileID: 141549361}
+  logPathSwitching: 1
+  aStarLogColor: {r: 0, g: 1, b: 1, a: 1}
+  dLiteLogColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  dliteActivationDelay: 5
 --- !u!1001 &246730866
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -647,7 +634,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9154f5df31b654d46b40d80851dbdf18, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  snapDuration: 0.5
+  grid: {fileID: 0}
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0

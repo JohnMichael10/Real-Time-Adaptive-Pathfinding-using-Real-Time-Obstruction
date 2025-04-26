@@ -214,7 +214,40 @@ public class GridGenerator : MonoBehaviour
         while (isInDynamicMode)
         {
             yield return new WaitForSeconds(dynamicObstructionInterval);
-            GenerateRandomObstructions();
+            
+            // Clear some random obstructions
+            for (int i = 0; i < 3; i++)
+            {
+                Vector2Int pos = new Vector2Int(
+                    Random.Range(0, gridWidth),
+                    Random.Range(0, gridHeight)
+                );
+                if (!IsPositionProtected(pos) && !nodes[pos].isWalkable)
+                {
+                    ToggleObstruction(pos, false);
+                    if (TryGetComponent<DLitePathfinding>(out var dLite))
+                    {
+                        dLite.MarkCellChanged(pos);
+                    }
+                }
+            }
+            
+            // Add new random obstructions
+            for (int i = 0; i < 3; i++)
+            {
+                Vector2Int pos = new Vector2Int(
+                    Random.Range(0, gridWidth),
+                    Random.Range(0, gridHeight)
+                );
+                if (!IsPositionProtected(pos) && nodes[pos].isWalkable)
+                {
+                    ToggleObstruction(pos, true);
+                    if (TryGetComponent<DLitePathfinding>(out var dLite))
+                    {
+                        dLite.MarkCellChanged(pos);
+                    }
+                }
+            }
         }
     }
 
