@@ -197,10 +197,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 141549359}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 66209dcb0fab0e643aa20ab6ec46fbb5, type: 3}
+  m_Script: {fileID: 11500000, guid: 11f5996af72e0ee498f1893de5b92863, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   grid: {fileID: 141549361}
+  logPathSwitching: 1
+  aStarLogColor: {r: 0, g: 1, b: 1, a: 1}
+  dLiteLogColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  dliteActivationDelay: 5
 --- !u!1001 &246730866
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -384,6 +388,7 @@ GameObject:
   - component: {fileID: 524747205}
   - component: {fileID: 524747204}
   - component: {fileID: 524747203}
+  - component: {fileID: 524747209}
   m_Layer: 0
   m_Name: Agent
   m_TagString: Untagged
@@ -534,6 +539,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &524747209
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 524747202}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3045b788181c14046bbac1df2ca5f762, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &570862968
 GameObject:
   m_ObjectHideFlags: 0

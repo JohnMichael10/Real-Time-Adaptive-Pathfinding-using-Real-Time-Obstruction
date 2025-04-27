@@ -43,11 +43,11 @@ public class PathfindingPerformanceTester : MonoBehaviour
         long endMemory = Profiler.GetTotalAllocatedMemoryLong();
 
         float timeElapsed = endTime - startTime;
-        float memoryUsedMB = (endMemory - startMemory) / (1024f * 1024f);
+        float memoryAllocatedMB = endMemory / (1024f * 1024f); // Total memory allocated in MB
 
         Debug.Log("<b><color=lime>Pathfinding completed!</color></b>");
         Debug.Log($"<color=yellow>Time Elapsed: {timeElapsed:F4} seconds</color>");
-        Debug.Log($"<color=orange>Memory Allocated: {memoryUsedMB:F4} MB</color>");
+        Debug.Log($"<color=orange>Total Memory Allocated: {memoryAllocatedMB:F4} MB</color>"); // Updated log message
 
         isMeasuring = false;
     }
