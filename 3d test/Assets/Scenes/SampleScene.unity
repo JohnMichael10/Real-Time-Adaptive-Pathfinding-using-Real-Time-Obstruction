@@ -197,14 +197,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 141549359}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 11f5996af72e0ee498f1893de5b92863, type: 3}
+  m_Script: {fileID: 11500000, guid: 66209dcb0fab0e643aa20ab6ec46fbb5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   grid: {fileID: 141549361}
-  logPathSwitching: 1
-  aStarLogColor: {r: 0, g: 1, b: 1, a: 1}
-  dLiteLogColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  dliteActivationDelay: 5
 --- !u!1001 &246730866
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -634,7 +630,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9154f5df31b654d46b40d80851dbdf18, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  grid: {fileID: 0}
+  grid: {fileID: 141549361}
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
